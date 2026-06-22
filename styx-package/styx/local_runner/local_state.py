@@ -16,6 +16,7 @@ class LocalOperatorState:
 
     def __init__(self) -> None:
         self._data: dict[tuple[str, int], dict[K, V]] = {}
+        self._func_context: dict[tuple[str, int], dict[K, V]] = {}
         self._key_locks: dict[tuple[str, K], asyncio.Lock] = {}
 
     def key_lock(self, operator_name: str, key: K) -> asyncio.Lock:
@@ -29,6 +30,12 @@ class LocalOperatorState:
 
     def init_partition(self, operator_name: str, partition: int) -> None:
         self._data.setdefault((operator_name, partition), {})
+
+    def get_func_context(self, operator_name: str, partition: int) -> dict[K, V]:
+        return self._func_context.get((operator_name, partition), {})
+
+    def put_func_context(self, operator_name: str, partition: int, context: dict[K, V]) -> None:
+        self._func_context[(operator_name, partition)] = context
 
     def get(self, key: K, operator_name: str, partition: int) -> V:
         return self._data[(operator_name, partition)].get(key)

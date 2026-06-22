@@ -53,6 +53,9 @@ pip install -r requirements.txt
 *   [`worker`](https://github.com/delftdata/styx/tree/main/worker)
     Styx worker.
 
+*   [`obol`](https://github.com/delftdata/styx/tree/main/obol)
+    The Obol source-to-source compiler that turns sequential Python into Styx operator functions.
+
 ## Container images
 
 The coordinator and worker images are published to the GitHub Container Registry (GHCR).
@@ -179,6 +182,35 @@ start workers manually outside Docker Compose, set `INGRESS_TYPE=KAFKA` together
 with the Kafka, coordinator, and S3-compatible storage environment variables.
 
 To clear the SE: `docker compose down --volumes`
+
+## Obol: write Styx programs as ordinary sequential Python
+
+[`obol`](obol/) is a source-to-source compiler that lets you write distributed
+stateful workflows as plain, type-annotated, object-oriented Python and compiles
+them into the asynchronous, message-passing operator functions that the Styx
+runtime expects.
+
+Instead of hand-decomposing a method into a chain of callbacks, you write
+entities and call their methods, and Obol generates the routing, state
+persistence, and continuation management. Compiled programs inherit Styx's
+exactly-once guarantees.
+
+- **Entities** are classes annotated with `@entity`; their `__init__` attributes
+  are their persistent state (essentially the database schema), and `__key__()`
+  returns the routing key Styx partitions on.
+- **Methods** are plain synchronous Python. A call on a value typed as an
+  `@entity` compiles to a remote dispatch; everything else stays local.
+- **Concurrency** is expressed with two constructs: `send_async`
+  (fire-and-forget) and `gather` (fan-out/fan-in), the latter compiling to a
+  failure-durable synchronization barrier.
+
+Under the hood, Obol is a multi-stage pipeline over the libcst syntax tree
+(syntactic preparation, `mypy`-based type resolution, live-variable analysis,
+and CPS-style function splitting at every remote-call boundary). Every
+cross-entity call in the source compiles to exactly one asynchronous dispatch in
+the output, with no extra round-trips introduced.
+
+See the [`obol/` README](obol/README.md) for more.
 
 ##### Cite Styx
 

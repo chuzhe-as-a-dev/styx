@@ -5,7 +5,11 @@ from styx.common.function import Function
 from styx.common.logging import logging
 from styx.common.message_types import MessageType
 from styx.common.run_func_payload import RunFuncPayload
-from styx.common.serialization import Serializer
+from styx.common.serialization import (
+    Serializer,
+    pickle_deserialization,
+    pickle_serialization,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable
@@ -173,6 +177,10 @@ class StatefulFunction(Function):
         """The key for this function instance."""
         return self.__key
 
+    @property
+    def t_id(self) -> int:
+        return self.__t_id
+
     async def run(self, *args) -> None:  # noqa: ANN002
         """Executes the actual function logic. Meant to be overridden by subclasses.
 
@@ -224,6 +232,63 @@ class StatefulFunction(Function):
             self.__state.put(
                 self.key,
                 value,
+                self.__t_id,
+                self.__operator_name,
+                self.__partition,
+            )
+
+    def _func_context_key(self) -> tuple[str, K]:
+        return ("__func_ctx__", self.__key)
+
+    def get_func_context(self) -> V:
+        """Retrieves the function context for the current key.
+
+        Works like get() but stores data in a separate namespace,
+        so it never conflicts with the entity state.
+        """
+        fc_key = self._func_context_key()
+        if self.__fallback_enabled:
+            value = self.__state.get_immediate(
+                fc_key,
+                self.__t_id,
+                self.__operator_name,
+                self.__partition,
+            )
+        else:
+            value = self.__state.get(
+                fc_key,
+                self.__t_id,
+                self.__operator_name,
+                self.__partition,
+            )
+        # Func context is stored as pickled bytes (see put_func_context) so it
+        # can carry arbitrary Python objects through the msgpack-based snapshot
+        # and migration paths. Entity state (get/put) still uses msgpack.
+        if value is None:
+            return value
+        return pickle_deserialization(value)
+
+    def put_func_context(self, value: V) -> None:
+        """Stores a function context value for the current key.
+
+        Works like put() but stores data in a separate namespace,
+        so it never conflicts with the entity state.
+        """
+        fc_key = self._func_context_key()
+
+        serialized_value = pickle_serialization(value)
+        if self.__fallback_enabled:
+            self.__state.put_immediate(
+                fc_key,
+                serialized_value,
+                self.__t_id,
+                self.__operator_name,
+                self.__partition,
+            )
+        else:
+            self.__state.put(
+                fc_key,
+                serialized_value,
                 self.__t_id,
                 self.__operator_name,
                 self.__partition,

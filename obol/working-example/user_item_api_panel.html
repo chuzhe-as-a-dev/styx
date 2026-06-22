@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Styx API Test Panel</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #16191f;
+    --surface-2: #1d2129;
+    --border: #2a2f3a;
+    --border-strong: #3a4150;
+    --text: #e6e8ec;
+    --text-muted: #8b93a3;
+    --text-faint: #5a6171;
+    --accent: #6c8cff;
+    --accent-hover: #8aa4ff;
+    --success: #4ade80;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 480px;
+    gap: 0;
+    min-height: 100vh;
+  }
+  .left {
+    padding: 20px 24px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .right {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh;
+    position: sticky;
+    top: 0;
+  }
+  header.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  header.top h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header.top .sub {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .url-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .url-bar label {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  input, textarea, select {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--sans);
+    width: 100%;
+    outline: none;
+    transition: border-color 0.1s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { font-family: var(--mono); font-size: 12px; resize: vertical; min-height: 60px; }
+  button {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: var(--sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--text-muted); padding: 4px 8px; font-size: 11px; }
+  button.ghost:hover { background: var(--surface-2); color: var(--text); border-color: transparent; }
+  .quick-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .group {
+    margin-bottom: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .group > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
+  .group > summary::-webkit-details-marker { display: none; }
+  .group > summary::before {
+    content: '›';
+    color: var(--text-faint);
+    font-size: 16px;
+    transform: rotate(0deg);
+    transition: transform 0.15s;
+  }
+  .group[open] > summary::before { transform: rotate(90deg); }
+  .group > summary .count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-faint);
+    font-weight: 400;
+  }
+  .group-body { padding: 4px 16px 12px; }
+  .endpoint {
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .endpoint:first-child { border-top: 0; }
+  .endpoint .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .endpoint .name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .verb {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+  }
+  .verb.GET { background: rgba(108, 140, 255, 0.15); color: #9eb3ff; }
+  .verb.POST { background: rgba(74, 222, 128, 0.15); color: #6ee7a0; }
+  .path {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+  .fields {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 6px 10px;
+    margin: 6px 0 8px;
+    align-items: center;
+  }
+  .fields label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .fields .full { grid-column: 1 / -1; }
+  .send-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  /* Right pane: response log */
+  .log-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .log-header h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .log-header .status {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+  .log-header .status.ok { color: var(--success); }
+  .log-header .status.err { color: var(--danger); }
+  .log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .entry {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .entry:last-child { border-bottom: 0; }
+  .entry .meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .entry .meta .time { color: var(--text-faint); }
+  .entry .meta .verb-tag {
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  .entry .meta .verb-tag.GET { background: rgba(108, 140, 255, 0.15); color: #9eb3ff; }
+  .entry .meta .verb-tag.POST { background: rgba(74, 222, 128, 0.15); color: #6ee7a0; }
+  .entry .meta .url { color: var(--text); word-break: break-all; flex: 1; }
+  .entry .meta .status-tag { font-weight: 600; }
+  .entry .meta .status-tag.ok { color: var(--success); }
+  .entry .meta .status-tag.err { color: var(--danger); }
+  .entry .meta .ms { color: var(--text-muted); }
+  .entry pre {
+    margin: 0;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 4px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .empty {
+    color: var(--text-faint);
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 12px;
+    font-style: italic;
+  }
+  /* Tag filter */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip:hover:not(.active) { color: var(--text); border-color: var(--border-strong); }
+  /* Responsive */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .right { position: relative; max-height: 50vh; border-left: 0; border-top: 1px solid var(--border); }
+  }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="left">
+    <header class="top">
+      <h1>Styx API test panel</h1>
+      <span class="sub">obol-app</span>
+    </header>
+
+    <div class="url-bar">
+      <label>Base URL</label>
+      <input type="text" id="baseUrl" value="http://localhost:8002" />
+    </div>
+
+    <div class="quick-row">
+      <button onclick="api('GET','/')" class="primary">Health check</button>
+      <button onclick="api('POST','/submit/4')" class="primary">Submit graph (n=4)</button>
+      <button onclick="api('POST','/submit/' + (prompt('Partitions:', '4') || '4'))">Submit graph (custom)</button>
+    </div>
+
+    <div class="filter-bar" id="filterBar"></div>
+
+    <div id="groups"></div>
+  </div>
+
+  <div class="right">
+    <div class="log-header">
+      <h2>Response log</h2>
+      <span class="status" id="status">idle</span>
+      <button class="ghost" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log" id="log">
+      <div class="empty">No requests yet. Pick an endpoint to start.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// -------------------- Endpoint catalog --------------------
+const groups = [
+  { name: 'User', items: [
+    { v:'POST', p:'/user/create', n:'Create user', f:[['name','alice','str']], body: v => ({name: v.name}) },
+    { v:'GET',  p:'/user/<id>/balance', n:'Get balance', f:[['user_id','alice','str']], path: v => `/user/${v.user_id}/balance` },
+    { v:'GET',  p:'/user/<id>/items', n:'Get items', f:[['user_id','alice','str']], path: v => `/user/${v.user_id}/items` },
+    { v:'POST', p:'/user/<id>/add_balance/<amt>', n:'Add balance', f:[['user_id','alice','str'],['amount','1000','int']], path: v => `/user/${v.user_id}/add_balance/${v.amount}` },
+  ]},
+  { name: 'Item', items: [
+    { v:'POST', p:'/item/create', n:'Create item', f:[['name','widget','str'],['price','50','int']], body: v => ({name: v.name, price: parseInt(v.price)}) },
+    { v:'GET',  p:'/item/<id>/stock', n:'Get stock', f:[['item_id','widget','str']], path: v => `/item/${v.item_id}/stock` },
+    { v:'GET',  p:'/item/<id>/price', n:'Get price', f:[['item_id','widget','str']], path: v => `/item/${v.item_id}/price` },
+    { v:'POST', p:'/item/<id>/add_stock/<amt>', n:'Add stock', f:[['item_id','widget','str'],['amount','100','int']], path: v => `/item/${v.item_id}/add_stock/${v.amount}` },
+  ]},
+  { name: 'Coupon', items: [
+    { v:'POST', p:'/coupon/create', n:'Create coupon', f:[['code','SAVE10','str'],['discount','10','int']], body: v => ({code: v.code, discount: parseInt(v.discount)}) },
+    { v:'GET',  p:'/coupon/<id>/discount', n:'Get discount', f:[['coupon_id','SAVE10','str']], path: v => `/coupon/${v.coupon_id}/discount` },
+  ]},
+  { name: 'Transactions', items: [
+    { v:'POST', p:'/buy_item/<u>/<i>/<amt>', n:'Buy item', f:[['user_id','alice','str'],['item_id','widget','str'],['amount','1','int']], path: v => `/buy_item/${v.user_id}/${v.item_id}/${v.amount}` },
+    { v:'POST', p:'/buy_item_test/<u>/<i>', n:'Buy item test', f:[['user_id','alice','str'],['item_id','widget','str']], path: v => `/buy_item_test/${v.user_id}/${v.item_id}` },
+    { v:'POST', p:'/user/<u>/transfer/<r>/<amt>', n:'Transfer balance', f:[['user_id','alice','str'],['recipient','bob','str'],['amount','100','int']], path: v => `/user/${v.user_id}/transfer/${v.recipient}/${v.amount}` },
+    { v:'GET',  p:'/user/<u>/is_in_stock/<i>', n:'Is in stock', f:[['user_id','alice','str'],['item_id','widget','str']], path: v => `/user/${v.user_id}/is_in_stock/${v.item_id}` },
+    { v:'GET',  p:'/user/<u>/discounted_price/<i>/<c>', n:'Get discounted price', f:[['user_id','alice','str'],['item_id','widget','str'],['coupon_id','SAVE10','str']], path: v => `/user/${v.user_id}/discounted_price/${v.item_id}/${v.coupon_id}` },
+    { v:'POST', p:'/user/<u>/buy_with_coupon/<i>', n:'Buy with coupon', f:[['user_id','alice','str'],['item_id','widget','str'],['coupon','SAVE10','str']], path: v => `/user/${v.user_id}/buy_with_coupon/${v.item_id}`, body: v => ({coupon: v.coupon || null}) },
+  ]},
+  { name: 'Bulk / cart', items: [
+    { v:'POST', p:'/bulk_purchase_with_tiers/<u>', n:'Bulk purchase with tiers', f:[['user_id','alice','str'],['cart','["widget","gadget"]','json'],['quantities','[2,3]','json']], path: v => `/bulk_purchase_with_tiers/${v.user_id}`, body: v => ({cart: v.cart, quantities: v.quantities}) },
+    { v:'POST', p:'/user/<u>/process_cart_with_limits', n:'Process cart with limits', f:[['user_id','alice','str'],['cart','["widget","gadget"]','json'],['max_spend','500','int']], path: v => `/user/${v.user_id}/process_cart_with_limits`, body: v => ({cart: v.cart, max_spend: parseInt(v.max_spend)}) },
+    { v:'POST', p:'/user/<u>/can_afford_cart', n:'Can afford cart', f:[['user_id','alice','str'],['items','["widget","gadget"]','json']], path: v => `/user/${v.user_id}/can_afford_cart`, body: v => ({items: v.items}) },
+    { v:'POST', p:'/user/<u>/multi_restock', n:'Multi restock', f:[['user_id','alice','str'],['items','["widget","gadget"]','json'],['amounts','[10,20]','json']], path: v => `/user/${v.user_id}/multi_restock`, body: v => ({items: v.items, amounts: v.amounts}) },
+    { v:'POST', p:'/user/<u>/group_items_by_price_bucket', n:'Group items by price bucket', f:[['user_id','alice','str'],['items','["widget","gadget"]','json']], path: v => `/user/${v.user_id}/group_items_by_price_bucket`, body: v => ({items: v.items}) },
+    { v:'POST', p:'/recursion/<u>', n:'Recursion test', f:[['user_id','alice','str'],['items','["widget","gadget"]','json']], path: v => `/recursion/${v.user_id}`, body: v => ({items: v.items}) },
+    { v:'POST', p:'/user/<u>/gather_in_loop', n:'Gather in loop', f:[['user_id','alice','str'],['items','["widget","gadget"]','json'],['coupons','["SAVE10","SAVE20"]','json']], path: v => `/user/${v.user_id}/gather_in_loop`, body: v => ({items: v.items, coupons: v.coupons}) },
+  ]},
+  { name: 'Read-only / utility', items: [
+    { v:'GET', p:'/inventory_value/<u>', n:'Inventory value', f:[['user_id','alice','str']], path: v => `/inventory_value/${v.user_id}` },
+    { v:'GET', p:'/inventory_value_gather/<u>', n:'Inventory value gather', f:[['user_id','alice','str']], path: v => `/inventory_value_gather/${v.user_id}` },
+    { v:'GET', p:'/my_item_prices/<u>', n:'My item prices', f:[['user_id','alice','str']], path: v => `/my_item_prices/${v.user_id}` },
+    { v:'GET', p:'/user/<u>/most_valuable_item_price', n:'Most valuable item price', f:[['user_id','alice','str']], path: v => `/user/${v.user_id}/most_valuable_item_price` },
+    { v:'GET', p:'/demo/<u>', n:'Demo', f:[['user_id','alice','str']], path: v => `/demo/${v.user_id}` },
+    { v:'POST', p:'/temp_func/<u>/<i>', n:'Temp func (ctx pickle test)', f:[['user_id','alice','str'],['item_id','widget','str']], path: v => `/temp_func/${v.user_id}/${v.item_id}` },
+  ]},
+];
+
+// -------------------- Render --------------------
+const groupsEl = document.getElementById('groups');
+const filterBar = document.getElementById('filterBar');
+const log = document.getElementById('log');
+const statusEl = document.getElementById('status');
+
+let activeFilter = 'all';
+
+function renderFilters() {
+  const all = ['all', ...groups.map(g => g.name)];
+  filterBar.innerHTML = '';
+  all.forEach(name => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (name === activeFilter ? ' active' : '');
+    c.textContent = name === 'all' ? 'all' : name.toLowerCase();
+    c.onclick = () => { activeFilter = name; renderFilters(); renderGroups(); };
+    filterBar.appendChild(c);
+  });
+}
+
+let inputCounter = 0;
+
+function renderGroups() {
+  groupsEl.innerHTML = '';
+  groups.forEach(g => {
+    if (activeFilter !== 'all' && g.name !== activeFilter) return;
+    const det = document.createElement('details');
+    det.className = 'group';
+    det.open = true;
+    const sum = document.createElement('summary');
+    sum.innerHTML = `<span>${g.name}</span><span class="count">${g.items.length}</span>`;
+    det.appendChild(sum);
+
+    const body = document.createElement('div');
+    body.className = 'group-body';
+    g.items.forEach(item => body.appendChild(renderEndpoint(item)));
+    det.appendChild(body);
+    groupsEl.appendChild(det);
+  });
+}
+
+function renderEndpoint(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'endpoint';
+
+  const head = document.createElement('div');
+  head.className = 'head';
+  head.innerHTML = `<span class="verb ${item.v}">${item.v}</span><span class="name">${item.n}</span><span class="path">${item.p}</span>`;
+  wrap.appendChild(head);
+
+  const inputIds = {};
+  if (item.f && item.f.length) {
+    const fields = document.createElement('div');
+    fields.className = 'fields';
+    item.f.forEach(([fname, fdefault, ftype]) => {
+      const id = 'inp_' + (inputCounter++);
+      inputIds[fname] = { id, type: ftype };
+      const lab = document.createElement('label');
+      lab.textContent = fname;
+      let inp;
+      if (ftype === 'json') {
+        inp = document.createElement('textarea');
+        inp.className = 'full';
+        lab.className = 'full';
+        lab.textContent = `${fname} (json)`;
+      } else {
+        inp = document.createElement('input');
+        inp.type = 'text';
+      }
+      inp.id = id;
+      inp.value = fdefault;
+      fields.appendChild(lab);
+      fields.appendChild(inp);
+    });
+    wrap.appendChild(fields);
+  }
+
+  const sendRow = document.createElement('div');
+  sendRow.className = 'send-row';
+  const btn = document.createElement('button');
+  btn.className = 'primary';
+  btn.textContent = 'Send';
+  btn.onclick = () => sendEndpoint(item, inputIds);
+  sendRow.appendChild(btn);
+  wrap.appendChild(sendRow);
+
+  return wrap;
+}
+
+function sendEndpoint(item, inputIds) {
+  try {
+    const v = {};
+    for (const [fname, info] of Object.entries(inputIds)) {
+      const raw = document.getElementById(info.id).value;
+      if (info.type === 'json') {
+        const t = raw.trim();
+        v[fname] = t ? JSON.parse(t) : null;
+      } else {
+        v[fname] = raw;
+      }
+    }
+    const path = item.path ? item.path(v) : item.p;
+    const body = item.body ? item.body(v) : undefined;
+    api(item.v, path, body);
+  } catch (e) {
+    addEntry({ method: item.v, path: item.p, status: 'input error', ok: false, ms: 0, body: e.message });
+    setStatus('bad input', 'err');
+  }
+}
+
+// -------------------- Networking --------------------
+function base() { return document.getElementById('baseUrl').value.replace(/\/$/, ''); }
+
+async function api(method, path, body) {
+  const url = base() + path;
+  setStatus('...', '');
+  const t0 = performance.now();
+  try {
+    const opts = { method, headers: {} };
+    if (body !== undefined && body !== null) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const r = await fetch(url, opts);
+    const ms = Math.round(performance.now() - t0);
+    const txt = await r.text();
+    let parsed;
+    try { parsed = JSON.parse(txt); } catch { parsed = txt; }
+    addEntry({ method, path, status: r.status, ok: r.ok, ms, body: typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2) });
+    setStatus(r.ok ? `ok ${r.status}` : `err ${r.status}`, r.ok ? 'ok' : 'err');
+  } catch (e) {
+    const ms = Math.round(performance.now() - t0);
+    addEntry({ method, path, status: 'network error', ok: false, ms, body: e.message + '\n\nTip: if you opened this from https://, the browser will block calls to http://localhost. Save this file locally and open it as file:// or http://.' });
+    setStatus('network error', 'err');
+  }
+}
+
+function addEntry({ method, path, status, ok, ms, body }) {
+  if (log.querySelector('.empty')) log.innerHTML = '';
+  const e = document.createElement('div');
+  e.className = 'entry';
+  const time = new Date().toLocaleTimeString();
+  e.innerHTML = `
+    <div class="meta">
+      <span class="time">${time}</span>
+      <span class="verb-tag ${method}">${method}</span>
+      <span class="url">${path}</span>
+      <span class="status-tag ${ok ? 'ok' : 'err'}">${status}</span>
+      <span class="ms">${ms}ms</span>
+    </div>
+    <pre></pre>
+  `;
+  e.querySelector('pre').textContent = body;
+  log.insertBefore(e, log.firstChild);
+}
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = 'status ' + (cls || '');
+}
+
+function clearLog() {
+  log.innerHTML = '<div class="empty">No requests yet. Pick an endpoint to start.</div>';
+  setStatus('idle', '');
+}
+
+// init
+renderFilters();
+renderGroups();
+</script>
+</body>
+</html>

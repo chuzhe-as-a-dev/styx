@@ -1,0 +1,21 @@
+name: styx
+
+services:
+
+  obol-user-item:
+    build:
+      context: ../..
+      dockerfile: obol/working-example/Dockerfile
+    image: dev/styx-wdm-demo-async:latest
+    command: watchmedo auto-restart --recursive --patterns="*.py" --directory="." --debug-force-polling -- python app.py
+    environment:
+      - STYX_HOST=coordinator
+      - STYX_PORT=8888
+      - KAFKA_URL=kafka1:19092
+      - OBOL_EXAMPLE=user_item
+      - PYTHONUNBUFFERED=TRUE
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./:/usr/local/styx/obol/working-example
+      - ../examples/compiled:/usr/local/styx/obol/examples/compiled

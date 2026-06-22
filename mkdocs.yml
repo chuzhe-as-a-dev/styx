@@ -5,6 +5,7 @@ nav:
   - Docs:
     - Overview: styx-docs/overview.md
     - Quickstart: styx-docs/quickstart.md
+    - Obol: obol/index.md
     - Styx Operator: styx-docs/styx-operator.md
     - Stateful Function: styx-docs/styx-stateful-function.md
     - Stateflow Graph: styx-docs/styx-stateflow-graph.md
@@ -78,7 +79,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: ["styx-package/styx"]
+          paths: ["styx-package/styx", "obol/src"]
           options:
             show_source: false
             merge_init_into_class: true
